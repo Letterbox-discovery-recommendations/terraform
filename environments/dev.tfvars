@@ -1,4 +1,3 @@
-project_name = "mi-proyecto"
+project_name = "dyr_dev_terra"
 environment  = "dev"
-ec2_instance_type = "t3.micro"
-# ... resto de variables para dev
+cloudfront_price_class = "PriceClass_All"
