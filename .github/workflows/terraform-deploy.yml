@@ -1,92 +1,44 @@
-name: Terraform Deploy
-
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       environment:
-        description: 'Environment to deploy'
-        required: true
-        type: choice
-        options:
-          - dev
-          - prod
-      action:
-        description: 'Terraform action'
-        required: true
-        type: choice
-        default: 'plan'
-        options:
-          - plan
-          - apply
-          - destroy
-  
-  workflow_call: 
-    inputs:
-      environment:
-        description: 'Environment to deploy'
         required: true
         type: string
       action:
-        description: 'Terraform action'
         required: true
         type: string
-      aws_access_key_id:
-        description: 'AWS Access Key ID'
-        required: true
+      aws_region:
+        required: false
         type: string
-      aws_secret_access_key:
-        description: 'AWS Secret Access Key'
+        default: us-east-2
+    secrets:
+      AWS_ACCESS_KEY_ID:
         required: true
-        type: string
-        
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+
 jobs:
   terraform:
     runs-on: ubuntu-latest
-    
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ inputs.aws_region }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.6.0
-      
-      - name: Configure AWS Credentials
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Configure AWS credentials (opcional si usás creds estáticas)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ inputs.aws_access_key_id }}
-          aws-secret-access-key: ${{ inputs.aws_secret_access_key }}
-          aws-region: 'us-east-2'
-      
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
       - name: Terraform Init
         run: terraform init
-      
-      - name: Terraform Validate
-        run: terraform validate
-      
-      - name: Terraform Plan
-        if: inputs.action == 'plan' || inputs.action == 'apply'
-        run: terraform plan -var-file="environments/${{ inputs.environment }}.tfvars"
-      
-      - name: Terraform Apply
-        if: inputs.action == 'apply'
-        run: terraform apply -var-file="environments/${{ inputs.environment }}.tfvars" -auto-approve
-      
-      - name: Terraform Destroy
-        if: inputs.action == 'destroy'
-        run: terraform destroy -var-file="environments/${{ inputs.environment }}.tfvars" -auto-approve
-      
-      - name: Get Outputs
-        if: inputs.action == 'apply'
-        id: outputs
+      - name: Terraform Plan/Apply/Destroy
         run: |
-          echo "### Terraform Outputs 🚀" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Frontend Bucket:** $(terraform output -raw frontend_bucket_name)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**CloudFront URL:** $(terraform output -raw frontend_url)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**CloudFront Distribution ID:** $(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_STEP_SUMMARY
+          case "${{ inputs.action }}" in
+            plan) terraform plan -var="environment=${{ inputs.environment }}" ;;
+            apply) terraform apply -auto-approve -var="environment=${{ inputs.environment }}" ;;
+            destroy) terraform destroy -auto-approve -var="environment=${{ inputs.environment }}" ;;
+          esac
