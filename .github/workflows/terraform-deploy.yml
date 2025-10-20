@@ -19,19 +19,22 @@ on:
           - plan
           - apply
           - destroy
+  
   workflow_call:
     inputs:
       environment:
+        description: 'Environment to deploy'
         required: true
         type: string
       action:
+        description: 'Terraform action'
         required: true
         type: string
 
 jobs:
   terraform:
     runs-on: ubuntu-latest
-    environment: aws-terraform
+    environment: aws-terraform 
     
     steps:
       - name: Checkout
