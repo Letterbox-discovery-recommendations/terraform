@@ -19,6 +19,14 @@ on:
           - plan
           - apply
           - destroy
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      action:
+        required: true
+        type: string
 
 jobs:
   terraform:
