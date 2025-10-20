@@ -1,3 +1,3 @@
-project_name = "dyr_dev_terra"
+project_name = "dyr-dev-terra"
 environment  = "dev"
 cloudfront_price_class = "PriceClass_All"
