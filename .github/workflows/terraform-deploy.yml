@@ -50,12 +50,13 @@ jobs:
         run: ls -l
       
       - name: Terraform Init
-        run: terraform -chdir="${{ env.TF_DIR }}" init
+        run: terraform init
 
       - name: Terraform Plan/Apply/Destroy
         run: |
+          TFVARS="environments/${{ inputs.environment }}.tfvars"
           case "${{ inputs.action }}" in
-            plan) terraform -chdir="${{ env.TF_DIR }}" plan -var="environment=${{ inputs.environment }}" ;;
-            apply) terraform -chdir="${{ env.TF_DIR }}" apply -auto-approve -var="environment=${{ inputs.environment }}" ;;
-            destroy) terraform -chdir="${{ env.TF_DIR }}" destroy -auto-approve -var="environment=${{ inputs.environment }}" ;;
+            plan) terraform plan   -var-file="$TFVARS" ;;
+            apply) terraform apply -auto-approve -var-file="$TFVARS" ;;
+            destroy) terraform destroy -auto-approve -var-file="$TFVARS" ;;
           esac
