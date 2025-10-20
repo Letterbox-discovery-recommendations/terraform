@@ -14,15 +14,12 @@ on:
         required: false
         type: string
         default: us-east-2
-      tf_dir:
-        description: "Ruta al directorio con .tf dentro del repo de infra"
-        required: false
-        type: string
-        default: ./environments/${{ inputs.environment }}
     secrets:
       AWS_ACCESS_KEY_ID:
         required: true
       AWS_SECRET_ACCESS_KEY:
+        required: true
+      INFRA_REPO_TOKEN:
         required: true
 
 jobs:
@@ -30,9 +27,15 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ${{ inputs.aws_region }}
+      TF_DIR: infra-repo/environments/${{ inputs.environment }}
     steps:
       - name: Checkout infra repo
         uses: actions/checkout@v4
+        with:
+          repository: Letterbox-discovery-recommendations/terraform
+          ref: main
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          path: infra-repo
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -44,16 +47,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ inputs.aws_region }}
 
-      - name: Lista
-        run: ls -l
-
       - name: Terraform Init
-        run: terraform -chdir="${{ inputs.tf_dir }}"  init
+        run: terraform -chdir="${{ env.TF_DIR }}" init
 
       - name: Terraform Plan/Apply/Destroy
         run: |
           case "${{ inputs.action }}" in
-            plan) terraform -chdir="${{ inputs.tf_dir }}" plan -var="environment=${{ inputs.environment }}" ;;
-            apply) terraform -chdir="${{ inputs.tf_dir }}" apply -auto-approve -var="environment=${{ inputs.environment }}" ;;
-            destroy) terraform -chdir="${{ inputs.tf_dir }}" destroy -auto-approve -var="environment=${{ inputs.environment }}" ;;
+            plan) terraform -chdir="${{ env.TF_DIR }}" plan -var="environment=${{ inputs.environment }}" ;;
+            apply) terraform -chdir="${{ env.TF_DIR }}" apply -auto-approve -var="environment=${{ inputs.environment }}" ;;
+            destroy) terraform -chdir="${{ env.TF_DIR }}" destroy -auto-approve -var="environment=${{ inputs.environment }}" ;;
           esac
