@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ${{ inputs.aws_region }}
-      TF_DIR: infra-repo/environments/${{ inputs.environment }}
+      TF_DIR: environments/${{ inputs.environment }}
     steps:
       - name: Checkout infra repo
         uses: actions/checkout@v4
@@ -35,7 +35,6 @@ jobs:
           repository: Letterbox-discovery-recommendations/terraform
           ref: main
           token: ${{ secrets.INFRA_REPO_TOKEN }}
-          path: infra-repo
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -47,6 +46,9 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ inputs.aws_region }}
 
+      - name: List
+        run: ls -l
+      
       - name: Terraform Init
         run: terraform -chdir="${{ env.TF_DIR }}" init
 
