@@ -44,6 +44,9 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ inputs.aws_region }}
 
+      - name: Lista
+        run: ls -l
+
       - name: Terraform Init
         run: terraform -chdir="${{ inputs.tf_dir }}"  init
 
