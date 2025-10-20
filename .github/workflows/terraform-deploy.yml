@@ -1,22 +1,29 @@
 name: Terraform Deploy
 
 on:
-  repository_dispatch:
-    types: [deploy-infrastructure]
   workflow_dispatch:
     inputs:
       environment:
         description: 'Environment to deploy'
         required: true
-        default: 'dev'
         type: choice
         options:
           - dev
           - prod
+      action:
+        description: 'Terraform action'
+        required: true
+        type: choice
+        default: 'plan'
+        options:
+          - plan
+          - apply
+          - destroy
 
 jobs:
   terraform:
     runs-on: ubuntu-latest
+    environment: aws-terraform
     
     steps:
       - name: Checkout
@@ -32,36 +39,36 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: 'us-east-2'
       
       - name: Terraform Init
         run: terraform init
       
+      - name: Terraform Validate
+        run: terraform validate
+      
       - name: Terraform Plan
-        run: terraform plan -var-file="environments/${{ github.event.client_payload.environment || inputs.environment }}.tfvars" -out=tfplan
+        if: inputs.action == 'plan' || inputs.action == 'apply'
+        run: terraform plan -var-file="environments/${{ inputs.environment }}.tfvars"
       
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        if: inputs.action == 'apply'
+        run: terraform apply -var-file="environments/${{ inputs.environment }}.tfvars" -auto-approve
+      
+      - name: Terraform Destroy
+        if: inputs.action == 'destroy'
+        run: terraform destroy -var-file="environments/${{ inputs.environment }}.tfvars" -auto-approve
       
       - name: Get Outputs
+        if: inputs.action == 'apply'
         id: outputs
         run: |
-          echo "bucket_name=$(terraform output -raw frontend_bucket_name)" >> $GITHUB_OUTPUT
-          echo "cloudfront_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
-          echo "cloudfront_url=$(terraform output -raw frontend_url)" >> $GITHUB_OUTPUT
-      
-      - name: Send outputs back to frontend repo
-        if: github.event_name == 'repository_dispatch'
-        run: |
-          curl -X POST \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.event.client_payload.callback_repo }}/dispatches \
-            -d '{
-              "event_type": "infrastructure-ready",
-              "client_payload": {
-                "bucket_name": "${{ steps.outputs.outputs.bucket_name }}",
-                "cloudfront_id": "${{ steps.outputs.outputs.cloudfront_id }}",
-                "cloudfront_url": "${{ steps.outputs.outputs.cloudfront_url }}"
-              }
-            }'
+          echo "### Terraform Outputs 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend Bucket:** $(terraform output -raw frontend_bucket_name)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**CloudFront URL:** $(terraform output -raw frontend_url)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**CloudFront Distribution ID:** $(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_STEP_SUMMARY
