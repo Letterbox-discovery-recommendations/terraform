@@ -1,5 +1,5 @@
 module "frontend" {
-  source = "./modules/s3-cloudfront"
+  source = "./modules/front"
 
   project_name = var.project_name
   environment  = var.environment
